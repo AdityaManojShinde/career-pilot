@@ -249,11 +249,13 @@ router.post('/import/linkedin', verifyToken, asyncHandler(async (req, res) => {
   const { url, profile: cachedProfile } = req.body;
   const userId = req.user.uid;
 
-  if (!url && !cachedProfile) {
-    throw new ApiError(400, 'LinkedIn URL or profile data is required');
+  if (!url && !(process.env.NODE_ENV === 'development' && cachedProfile)) {
+    throw new ApiError(400, 'LinkedIn URL is required');
   }
 
-  const profile = cachedProfile || await scrapeLinkedInProfile(url.trim());
+  const profile = (process.env.NODE_ENV === 'development' && cachedProfile)
+    ? cachedProfile
+    : await scrapeLinkedInProfile(url.trim());
   const resumeText = profileToResumeText(profile);
   const title = `${profile.name || 'LinkedIn'} — Imported ${new Date().toLocaleDateString()}`;
 
@@ -294,7 +296,7 @@ router.get('/:resumeId/download', verifyToken, asyncHandler(async (req, res) => 
     throw new ApiError(404, 'Resume not found');
   }
 
-  if (resume.userId !== userId) {
+  if (String(resume.userId) !== String(userId)) {
     throw new ApiError(403, 'Access denied');
   }
 

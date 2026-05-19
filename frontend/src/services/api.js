@@ -18,11 +18,27 @@ async function getAuthHeaders() {
 
 // Helper to handle API responses
 async function handleResponse(response) {
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.error || 'Something went wrong')
+  let data;
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch (e) {
+      data = null;
+    }
+  } else {
+    try {
+      const text = await response.text();
+      data = { error: text || response.statusText };
+    } catch (e) {
+      data = { error: response.statusText };
+    }
   }
-  return data
+
+  if (!response.ok) {
+    throw new Error((data && data.error) || `Server error (${response.status})`);
+  }
+  return data || {};
 }
 
 // ============ AUTH API ============
@@ -183,8 +199,20 @@ export const resumeApi = {
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || 'Failed to download PDF')
+      let errorMsg = 'Failed to download PDF';
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+        } else {
+          const errorText = await response.text();
+          errorMsg = errorText || errorMsg;
+        }
+      } catch (e) {
+        // ignore parsing error and keep default
+      }
+      throw new Error(errorMsg);
     }
 
     return response.blob()
