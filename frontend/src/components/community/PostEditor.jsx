@@ -32,9 +32,33 @@ const [pollOptions, setPollOptions] = useState([
 ]);
 
   const buildPostData = () => {
-  const validOptions = pollOptions.filter(
-    option => option.trim() !== ""
-  );
+ const buildPostData = () => {
+  const normalizedOptions = pollOptions
+    .map(option => option.trim())
+    .filter(Boolean);
+
+  const trimmedQuestion = pollQuestion.trim();
+
+  const isValidPoll =
+    trimmedQuestion.length > 0 &&
+    normalizedOptions.length >= 2;
+
+  return {
+    title: title.trim(),
+    content: content.trim(),
+    category,
+    tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+
+    ...(showPoll && isValidPoll && {
+      poll: {
+        question: trimmedQuestion,
+        options: normalizedOptions
+      }
+    }),
+
+    ...(scheduledAt && { scheduledAt })
+  };
+};
 
   return {
     title: title.trim(),
@@ -229,12 +253,13 @@ const removePollOption = (index) => {
 
           {pollOptions.length > 2 && (
             <button
-              type="button"
-              onClick={() => removePollOption(index)}
-              className="px-3 py-2 bg-red-500 text-white rounded-lg"
-            >
-              X
-            </button>
+  type="button"
+  onClick={() => removePollOption(index)}
+  aria-label={`Remove poll option ${index + 1}`}
+  className="px-3 py-2 bg-red-500 text-white rounded-lg"
+>
+  X
+</button>
           )}
         </div>
       ))}
@@ -315,6 +340,7 @@ const removePollOption = (index) => {
   <button
     type="button"
     onClick={() => setShowPoll(!showPoll)}
+    aria-label={showPoll ? 'Remove poll' : 'Add poll'}
     className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
     title="Add Poll"
   >
